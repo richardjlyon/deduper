@@ -1,10 +1,8 @@
 //! Represents an image.
 
-use image::{DynamicImage, GenericImageView};
-use std::io::{self, Cursor, Read};
+use std::io::{self};
 use std::{fs::File, path::PathBuf};
-
-use sha2::{Digest, Sha256};
+use xxhash_rust::xxh3::xxh3_64;
 
 #[derive(Debug)]
 pub struct Image {
@@ -12,28 +10,37 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn hash_image(self) -> io::Result<String> {
-        /// Hashes the image file using SHA-256.
+    /// Hash the image file.
+    ///
+    /// We hash the decoded image to avoid any exif
+    /// data altering the hash.
+    pub fn hash_image(&self) -> io::Result<u64> {
         // Open the image file
-        let file = File::open(self.path)?;
-        let mut reader = io::BufReader::new(file);
+        let file = File::open(&self.path)?;
+        let reader = io::BufReader::new(file);
 
         // Decode the image from the file, ignore EXIF metadata
-        let image = image::load(reader, image::ImageFormat::Jpeg).unwrap();
+        let image = image::ImageReader::new(reader)
+            .with_guessed_format()?
+            .decode()
+            .unwrap();
 
         // Convert the image into raw pixel data
         let raw_pixels = image.to_rgb8();
-
-        // Access the underlying raw buffer (Vec<u8>) of the ImageBuffer
         let pixel_data = raw_pixels.as_raw();
 
-        // Create a hash of the pixel data using SHA-256
-        let mut hasher = Sha256::new();
-        hasher.update(&pixel_data);
-        let result = hasher.finalize();
+        let hash = xxh3_64(&pixel_data);
 
-        // Return the hash as a hexadecimal string
-        Ok(format!("{:x}", result))
+        Ok(hash)
+    }
+}
+
+impl PartialEq for Image {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.hash_image(), other.hash_image()) {
+            (Ok(self_hash), Ok(other_hash)) => self_hash == other_hash,
+            _ => false,
+        }
     }
 }
 
@@ -41,41 +48,24 @@ impl Image {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
-    fn test_image() {
-        let img1 = get_img1();
-
-        assert_eq!(
-            img1.path,
-            PathBuf::from("/Users/richardlyon/dev/deduper/test-data/case-1/img.jpg")
-        );
-    }
-
-    #[test]
     fn test_hash_image() {
-        let img1 = get_img1();
-        let img2 = get_img2();
+        let img = get_img("img.jpg");
+        let img_duplicate = get_img("img-duplicate.jpg");
+        let img_different = get_img("img-different.jpg");
 
-        let hash1 = img1.hash_image().unwrap();
-        let hash2 = img2.hash_image().unwrap();
-
-        assert_eq!(hash1, hash2);
+        assert!(img == img_duplicate);
+        assert!(img != img_different);
     }
 
-    fn get_img1() -> Image {
+    fn get_img(img_name: &str) -> Image {
         let test_dir = get_test_dir();
-        let img1_name = test_dir.join("img.jpg");
+        let img = test_dir.join(img_name);
 
-        Image { path: img1_name }
-    }
-
-    fn get_img2() -> Image {
-        let test_dir = get_test_dir();
-        let img2_name = test_dir.join("img-duplicate.JPG");
-
-        Image { path: img2_name }
+        Image { path: img }
     }
 
     fn get_test_dir() -> PathBuf {
