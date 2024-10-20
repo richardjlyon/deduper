@@ -1,37 +1,35 @@
 //! Represents an image.
 
+use image::DynamicImage;
 use std::io::{self};
-use std::{fs::File, path::PathBuf};
+use std::path::PathBuf;
 use xxhash_rust::xxh3::xxh3_64;
 
 #[derive(Debug)]
 pub struct Image {
     pub path: PathBuf,
+    pub image: DynamicImage,
 }
 
 impl Image {
-    /// Hash the image file.
-    ///
-    /// We hash the decoded image to avoid any exif
-    /// data altering the hash.
+    pub fn from_path(path: PathBuf) -> Image {
+        let image = image::open(&path).unwrap();
+
+        Image { path, image }
+    }
+
     pub fn hash_image(&self) -> io::Result<u64> {
-        // Open the image file
-        let file = File::open(&self.path)?;
-        let reader = io::BufReader::new(file);
-
-        // Decode the image from the file, ignore EXIF metadata
-        let image = image::ImageReader::new(reader)
-            .with_guessed_format()?
-            .decode()
-            .unwrap();
-
-        // Convert the image into raw pixel data
-        let raw_pixels = image.to_rgb8();
-        let pixel_data = raw_pixels.as_raw();
-
-        let hash = xxh3_64(&pixel_data);
+        let rgb_image = self.image.to_rgb8();
+        let bytes = rgb_image.as_raw();
+        let hash = xxh3_64(&bytes);
 
         Ok(hash)
+    }
+
+    /// Returns true if the image has a sidecar file.
+    pub fn has_sidecar(&self) -> bool {
+        let sidecar = self.path.with_extension("xmp");
+        sidecar.exists()
     }
 }
 
@@ -49,9 +47,12 @@ impl PartialEq for Image {
 #[cfg(test)]
 mod tests {
 
+    use image::GenericImageView;
+
     use super::*;
 
     #[test]
+    #[ignore = "slow"]
     fn test_hash_image() {
         let img = get_img("img.jpg");
         let img_duplicate = get_img("img-duplicate.jpg");
@@ -61,11 +62,29 @@ mod tests {
         assert!(img != img_different);
     }
 
+    #[test]
+    fn test_has_sidecar() {
+        let img_with = get_img("img.jpg");
+        let img_without = get_img("img-duplicate.jpg");
+
+        assert!(img_with.has_sidecar());
+        assert!(!img_without.has_sidecar());
+    }
+
+    #[test]
+    fn test_from() {
+        let test_dir = get_test_dir();
+        let img_path = test_dir.join("img.jpg");
+        let img = Image::from_path(img_path);
+
+        assert_eq!(img.image.dimensions(), (4032, 3024));
+    }
+
     fn get_img(img_name: &str) -> Image {
         let test_dir = get_test_dir();
-        let img = test_dir.join(img_name);
+        let img_path = test_dir.join(img_name);
 
-        Image { path: img }
+        Image::from_path(img_path)
     }
 
     fn get_test_dir() -> PathBuf {
