@@ -19,9 +19,25 @@ impl Image {
     }
 
     pub fn hash_image(&self) -> io::Result<u64> {
+        // Convert the image to RGB8 format
         let rgb_image = self.image.to_rgb8();
-        let bytes = rgb_image.as_raw();
-        let hash = xxh3_64(&bytes);
+        let (width, height) = rgb_image.dimensions();
+
+        // Define the chunk size (e.g., 10% of the image)
+        let chunk_width = width / 10;
+        let chunk_height = height / 10;
+
+        // Collect the pixel data from the chunk
+        let mut chunk_data = Vec::with_capacity((chunk_width * chunk_height * 3) as usize);
+        for y in 0..chunk_height {
+            for x in 0..chunk_width {
+                let pixel = rgb_image.get_pixel(x, y);
+                chunk_data.extend_from_slice(&pixel.0);
+            }
+        }
+
+        // Create a hash of the chunk data using xxHash
+        let hash = xxh3_64(&chunk_data);
 
         Ok(hash)
     }
@@ -47,20 +63,11 @@ impl PartialEq for Image {
 #[cfg(test)]
 mod tests {
 
+    use std::time::Instant;
+
     use image::GenericImageView;
 
     use super::*;
-
-    #[test]
-    #[ignore = "slow"]
-    fn test_hash_image() {
-        let img = get_img("img.jpg");
-        let img_duplicate = get_img("img-duplicate.jpg");
-        let img_different = get_img("img-different.jpg");
-
-        assert!(img == img_duplicate);
-        assert!(img != img_different);
-    }
 
     #[test]
     fn test_has_sidecar() {
@@ -78,6 +85,21 @@ mod tests {
         let img = Image::from_path(img_path);
 
         assert_eq!(img.image.dimensions(), (4032, 3024));
+    }
+
+    #[test]
+    // #[ignore = "slow"]
+    fn test_hash_image() {
+        let img = get_img("img.jpg");
+        let img_duplicate = get_img("img-duplicate.jpg");
+        let img_different = get_img("img-different.jpeg");
+
+        let start = Instant::now();
+        assert!(img == img_duplicate);
+        assert!(img != img_different);
+
+        let duration = start.elapsed();
+        println!("Time taken to hash image: {:?}", duration);
     }
 
     fn get_img(img_name: &str) -> Image {
