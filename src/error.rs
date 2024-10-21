@@ -11,6 +11,8 @@ pub enum AppError {
     #[error("Image error: {0}")]
     ImageError(#[from] image::ImageError),
 
-    #[error("Unknown error")]
-    Unknown,
+    #[error("Different aspect ratios")]
+    DifferentAspectRatio,
+    // #[error("Unknown error")]
+    // Unknown,
 }
