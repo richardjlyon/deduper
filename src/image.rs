@@ -1,9 +1,12 @@
-//! Represents an image.
+//! Represents an image. Computes the hash of an image for detecting duplicates, and
+//! checks for sidecar files.
 
 use image::DynamicImage;
 use std::io::{self};
 use std::path::PathBuf;
 use xxhash_rust::xxh3::xxh3_64;
+
+use crate::error::AppError;
 
 #[derive(Debug)]
 pub struct Image {
@@ -12,20 +15,61 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn from_path(path: PathBuf) -> Image {
-        let image = image::open(&path).unwrap();
+    /// Creates a new Image from a file path.
+    pub fn from_path(path: PathBuf) -> Result<Image, AppError> {
+        // return an error if the extension is '.heic'
+        if let Some(extension) = path.extension() {
+            match extension.to_str().unwrap_or("").to_lowercase().as_str() {
+                "heic" => {
+                    return Err(AppError::UnsupportedType(
+                        extension.to_string_lossy().into_owned(),
+                    ));
+                }
+                _ => (),
+            }
+        }
 
-        Image { path, image }
+        let image = image::open(&path)?;
+
+        Ok(Image { path, image })
     }
 
-    pub fn hash_image(&self) -> io::Result<u64> {
+    /// Returns true if the image has a sidecar file.
+    pub fn has_sidecar(&self) -> bool {
+        let sidecar = self.path.with_extension("xmp");
+        sidecar.exists()
+    }
+
+    /// Returns the hash of the image.
+    /// To reduce compute time, the hash is computed from a chunk of the image, which is
+    ///  defined by the `chunksize` parameter.
+    pub fn hash(&self, chunksize: f32) -> io::Result<u64> {
+        if let Some(extension) = self.path.extension() {
+            match extension.to_str().unwrap_or("").to_lowercase().as_str() {
+                "heic" => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "HEIC images are not supported",
+                    ))
+                }
+                _ => (),
+            }
+        }
+
+        if chunksize <= 0.0 || chunksize > 1.0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "chunksize must be between 0.0 and 1.0",
+            ));
+        }
+
         // Convert the image to RGB8 format
         let rgb_image = self.image.to_rgb8();
         let (width, height) = rgb_image.dimensions();
 
         // Define the chunk size (e.g., 10% of the image)
-        let chunk_width = width / 10;
-        let chunk_height = height / 10;
+        let chunk_width = ((width as f32) * chunksize) as u32;
+        let chunk_height = ((height as f32) * chunksize) as u32;
 
         // Collect the pixel data from the chunk
         let mut chunk_data = Vec::with_capacity((chunk_width * chunk_height * 3) as usize);
@@ -41,58 +85,53 @@ impl Image {
 
         Ok(hash)
     }
-
-    /// Returns true if the image has a sidecar file.
-    pub fn has_sidecar(&self) -> bool {
-        let sidecar = self.path.with_extension("xmp");
-        sidecar.exists()
-    }
 }
 
 impl PartialEq for Image {
+    /// Returns true if the image hahes are equal.
     fn eq(&self, other: &Self) -> bool {
-        match (self.hash_image(), other.hash_image()) {
+        const CHUNKSIZE: f32 = 0.1;
+        match (self.hash(CHUNKSIZE), other.hash(CHUNKSIZE)) {
             (Ok(self_hash), Ok(other_hash)) => self_hash == other_hash,
             _ => false,
         }
     }
 }
 
-// tests
+// tests ------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
 
+    use super::*;
+    use image::GenericImageView;
     use std::time::Instant;
 
-    use image::GenericImageView;
-
-    use super::*;
-
     #[test]
+    #[ignore = "slow"]
     fn test_has_sidecar() {
-        let img_with = get_img("img.jpg");
-        let img_without = get_img("img-duplicate.jpg");
+        let img_with = get_img("img.jpg").unwrap();
+        let img_without = get_img("img-duplicate.jpg").unwrap();
 
         assert!(img_with.has_sidecar());
         assert!(!img_without.has_sidecar());
     }
 
     #[test]
-    fn test_from() {
-        let test_dir = get_test_dir();
-        let img_path = test_dir.join("img.jpg");
-        let img = Image::from_path(img_path);
+    #[ignore = "slow"]
+    fn test_constructor() {
+        let img_path = PathBuf::from("test-data/case-1/img.jpg");
+        let img = Image::from_path(img_path).unwrap();
 
         assert_eq!(img.image.dimensions(), (4032, 3024));
     }
 
     #[test]
     // #[ignore = "slow"]
-    fn test_hash_image() {
-        let img = get_img("img.jpg");
-        let img_duplicate = get_img("img-duplicate.jpg");
-        let img_different = get_img("img-different.jpeg");
+    fn test_hash() {
+        let img = get_img("img.jpg").unwrap();
+        let img_duplicate = get_img("img-duplicate.jpg").unwrap();
+        let img_different = get_img("img-different.jpeg").unwrap();
 
         let start = Instant::now();
         assert!(img == img_duplicate);
@@ -102,16 +141,10 @@ mod tests {
         println!("Time taken to hash image: {:?}", duration);
     }
 
-    fn get_img(img_name: &str) -> Image {
-        let test_dir = get_test_dir();
+    fn get_img(img_name: &str) -> Result<Image, AppError> {
+        let test_dir = PathBuf::from("test-data/case-1/");
         let img_path = test_dir.join(img_name);
 
         Image::from_path(img_path)
-    }
-
-    fn get_test_dir() -> PathBuf {
-        let test_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data");
-
-        test_root.join("case-1")
     }
 }
