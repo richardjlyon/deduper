@@ -17,10 +17,10 @@ impl Image {
     /// Valid images
     pub fn is_image_file(path: &Path) -> bool {
         if let Some(extension) = path.extension() {
-            match extension.to_str().unwrap_or("").to_lowercase().as_str() {
-                "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tiff" | "webp" => true,
-                _ => false,
-            }
+            matches!(
+                extension.to_str().unwrap_or("").to_lowercase().as_str(),
+                "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tiff" | "webp"
+            )
         } else {
             false
         }
@@ -30,20 +30,17 @@ impl Image {
     pub fn from_path(path: &PathBuf) -> Result<Image, AppError> {
         // return an error if the extension is '.heic'
         if let Some(extension) = path.extension() {
-            match extension.to_str().unwrap_or("").to_lowercase().as_str() {
-                "heic" => {
-                    return Err(AppError::UnsupportedType(
-                        extension.to_string_lossy().into_owned(),
-                    ));
-                }
-                _ => (),
+            if extension.to_str().unwrap_or("").to_lowercase().as_str() == "heic" {
+                return Err(AppError::UnsupportedType(
+                    extension.to_string_lossy().into_owned(),
+                ));
             }
         }
 
-        let mut image = image::open(&path)?;
+        let mut image = image::open(path)?;
 
         // Ensure the image is not rotated by checking the EXIf orientation tag
-        let exif = rexif::parse_file(&path).expect("Failed to parse EXIF data");
+        let exif = rexif::parse_file(path).expect("Failed to parse EXIF data");
         if let Some(orientation) = exif
             .entries
             .iter()
@@ -69,7 +66,7 @@ impl Image {
     }
 
     /// Returns true if the image has a sidecar file.
-    pub fn has_sidecar(&self) -> bool {
+    pub fn _has_sidecar(&self) -> bool {
         let sidecar = self.path.with_extension("xmp");
         sidecar.exists()
     }
@@ -130,8 +127,8 @@ mod tests {
         let img_with = get_img("img.jpg").unwrap();
         let img_without = get_img("img-duplicate.jpg").unwrap();
 
-        assert!(img_with.has_sidecar());
-        assert!(!img_without.has_sidecar());
+        assert!(img_with._has_sidecar());
+        assert!(!img_without._has_sidecar());
     }
 
     #[test]

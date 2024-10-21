@@ -9,14 +9,11 @@ impl Image {
     ///  defined by the `chunksize` parameter.
     pub fn hash(&self, chunksize: f32) -> io::Result<u64> {
         if let Some(extension) = self.path.extension() {
-            match extension.to_str().unwrap_or("").to_lowercase().as_str() {
-                "heic" => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "HEIC images are not supported",
-                    ))
-                }
-                _ => (),
+            if extension.to_str().unwrap_or("").to_lowercase().as_str() == "heic" {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "HEIC images are not supported",
+                ));
             }
         }
 
