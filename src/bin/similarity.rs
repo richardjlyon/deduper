@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use deduper::image::Image;
 use deduper::setup_logger;
-use deduper::similarity::ssim_score;
+use deduper::similarity::ssim_index;
 use log::LevelFilter;
 
 fn main() {
@@ -23,7 +23,7 @@ fn main() {
     let img1 = Image::from_path(&path1).unwrap();
     let img2 = Image::from_path(&path2).unwrap();
 
-    let ssim_score = ssim_score(&img1, &img2).unwrap();
+    let ssim_score = ssim_index(&img1, &img2).unwrap();
 
     println!("score = {:?}", ssim_score);
 }

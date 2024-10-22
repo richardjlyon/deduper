@@ -1,3 +1,4 @@
+pub mod duplicates;
 mod error;
 pub mod image;
 pub mod indexer;

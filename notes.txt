@@ -33,6 +33,8 @@ Two criteria for duplicate images are:
 - images with the same hash
 - images are structurally similar
 
+The detection algorithm is as follows. We compare each image to every other image and compute the similarty index. We use a datastructure that uses the hash of image path as the key and a vector of image paths that are similar. To speed up comparison, we use a cache to store the similarity index of images that have already been compared.
+
 
 Additional considerations:
 =========================

@@ -8,7 +8,27 @@ use crate::image::Image;
 
 const ASPECT_RATIO_TOLERANCE: f32 = 0.01;
 
-pub fn ssim_score(img1: &Image, img2: &Image) -> Result<f64, AppError> {
+/// Compute the structural similarity index (SSIM) between two images.
+pub fn ssim_index2(img1: &DynamicImage, img2: &DynamicImage) -> Result<f32, AppError> {
+    let (image1, image2) = normalize_images(&img1, &img2);
+
+    // Compute mean intensity of the greyscale images
+    let gray1 = image1.to_luma8();
+    let gray2 = image2.to_luma8();
+
+    let mu1 = mean_intensity(&gray1);
+    let mu2 = mean_intensity(&gray2);
+
+    // Compute the variance and covariance of the greyscale images
+    let (var1, var2, cov) = variance_covariance(&gray1, &gray2, mu1, mu2);
+
+    let ssim_score = ssim(mu1, mu2, var1, var2, cov) as f32;
+
+    Ok(ssim_score)
+}
+
+/// Compute the structural similarity index (SSIM) between two images.
+pub fn ssim_index(img1: &Image, img2: &Image) -> Result<f64, AppError> {
     // Reject images with different aspect ratios, then normalise dimensions
     if (img1.aspect_ratio()? - img2.aspect_ratio()?).abs() > ASPECT_RATIO_TOLERANCE {
         return Err(AppError::DifferentAspectRatio);
@@ -93,7 +113,7 @@ mod tests {
         let img1 = get_test_img("01/house.jpg").unwrap();
         let img2 = get_test_img("01/house-duplicate.jpg").unwrap();
 
-        assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
+        assert!((ssim_index(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
     }
 
     #[test]
@@ -103,7 +123,7 @@ mod tests {
         let img1 = get_test_img("02/face-right-1.jpg").unwrap();
         let img2 = get_test_img("02/face-right-2.jpg").unwrap();
 
-        assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
+        assert!((ssim_index(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
     }
 
     #[test]
@@ -113,7 +133,7 @@ mod tests {
         let img1 = get_test_img("02/face-right-1.jpg").unwrap();
         let img2 = get_test_img("02/face-right-1-small.jpg").unwrap();
 
-        assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
+        assert!((ssim_index(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
     }
 
     #[test]
@@ -123,7 +143,7 @@ mod tests {
         let img1 = get_test_img("01/house.jpg").unwrap();
         let img2 = get_test_img("01/house-flipped.jpg").unwrap();
 
-        assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() > 0.4);
+        assert!((ssim_index(&img1, &img2).unwrap() - 1.0).abs() > 0.4);
     }
 
     #[test]
@@ -133,7 +153,7 @@ mod tests {
         let img1 = get_test_img("01/house.jpg").unwrap();
         let img2 = get_test_img("01/coffee.jpeg").unwrap();
 
-        let result = ssim_score(&img1, &img2);
+        let result = ssim_index(&img1, &img2);
 
         assert!(result.is_err());
     }
