@@ -1,5 +1,5 @@
-//! Represents an image. Computes the hash of an image for detecting duplicates, and
-//! checks for sidecar files.
+//! Represents an image.
+//! Computes the hash of an image for detecting duplicates, and checks for sidecar files.
 
 use image::{DynamicImage, GenericImageView};
 use rexif::{ExifTag, TagValue};
@@ -14,18 +14,6 @@ pub struct Image {
 }
 
 impl Image {
-    /// Valid images
-    pub fn is_image_file(path: &Path) -> bool {
-        if let Some(extension) = path.extension() {
-            matches!(
-                extension.to_str().unwrap_or("").to_lowercase().as_str(),
-                "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tiff" | "webp"
-            )
-        } else {
-            false
-        }
-    }
-
     /// Creates a new Image from a file path.
     pub fn from_path(path: &PathBuf) -> Result<Image, AppError> {
         // return an error if the extension is '.heic'
@@ -63,6 +51,18 @@ impl Image {
             path: path.to_owned(),
             image,
         })
+    }
+
+    /// Valid images
+    pub fn is_image_file(path: &Path) -> bool {
+        if let Some(extension) = path.extension() {
+            matches!(
+                extension.to_str().unwrap_or("").to_lowercase().as_str(),
+                "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tiff" | "webp"
+            )
+        } else {
+            false
+        }
     }
 
     /// Returns true if the image has a sidecar file.

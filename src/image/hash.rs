@@ -1,3 +1,5 @@
+//! Hashing functionality for images.
+
 use std::io;
 
 use super::Image;

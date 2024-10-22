@@ -1,0 +1,38 @@
+The app fimds dupliate images in a folder and its subfolders and generates a JSON report of the duplicates.
+
+Image representation:
+====================
+
+An image is represented by a Struct `Image` that contains the path to the file.
+Expensive operations like hashing and metadata extraction are done lazily.
+
+`Image` provides the following methods:
+
+- resolution() -> Tuple[int, int]: returns the resolution of the image
+- aspect_ratio() -> float: returns the aspect ratio of the image
+- metadata() -> Dict[str, Any]: returns the metadata of the image e.g. gps location
+- hash() -> str: returns the hash of the image
+- similarity(other: Image) -> float: returns the similarity of the image to another image
+
+Image is hashable and comparable.
+
+Similarity detection:
+====================
+
+Images are converted to greyscale and resized to be the same dimensions. SSIM is computed from variance and covariance of the images.
+
+
+Duplicate detection:
+====================
+
+Two criteria for duplicate images are:
+- images with the same hash
+- images are structurally similar
+
+
+Additional considerations:
+=========================
+
+Where duplictes are found, the app should keep the image with the highest resolution.
+
+Metadata from the other images should be preserved, expecially geolocation. The app needs to manage conflicts.

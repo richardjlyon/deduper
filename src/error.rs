@@ -13,6 +13,12 @@ pub enum AppError {
 
     #[error("Different aspect ratios")]
     DifferentAspectRatio,
+
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("Serialise error: {0}")]
+    SerialiseError(#[from] serde_json::Error),
     // #[error("Unknown error")]
     // Unknown,
 }
