@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use deduper::duplicates::create_similarity_index;
+use deduper::duplicates_rayon::create_similarity_index_rayon;
 use deduper::indexer::index_images_in_folder;
 use deduper::setup_logger;
 use log::LevelFilter;
@@ -17,7 +17,7 @@ fn main() {
 
     let start = std::time::Instant::now();
 
-    let similarity_index = create_similarity_index(image_paths);
+    let similarity_index = create_similarity_index_rayon(image_paths);
     let duration = start.elapsed();
     println!("->> Time elapsed is: {:?}", duration);
 

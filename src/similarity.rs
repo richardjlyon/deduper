@@ -10,7 +10,7 @@ const ASPECT_RATIO_TOLERANCE: f32 = 0.01;
 
 /// Compute the structural similarity index (SSIM) between two images.
 pub fn ssim_index2(img1: &DynamicImage, img2: &DynamicImage) -> Result<f32, AppError> {
-    let (image1, image2) = normalize_images(&img1, &img2);
+    let (image1, image2) = normalize_images(img1, img2);
 
     // Compute mean intensity of the greyscale images
     let gray1 = image1.to_luma8();

@@ -1,4 +1,5 @@
 pub mod duplicates;
+pub mod duplicates_rayon;
 mod error;
 pub mod image;
 pub mod indexer;

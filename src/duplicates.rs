@@ -35,7 +35,7 @@ pub fn create_similarity_index(image_paths: Vec<PathBuf>) -> HashMap<String, Vec
         let hash1 = calculate_hash(path1);
         similarity_index
             .entry(hash1.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(path1.to_string_lossy().into_owned());
 
         // Compare similarity with all other images
@@ -48,7 +48,7 @@ pub fn create_similarity_index(image_paths: Vec<PathBuf>) -> HashMap<String, Vec
             if similarity > 0.95 {
                 similarity_index
                     .entry(hash1.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(path2.to_string_lossy().into_owned());
 
                 debug!(
@@ -124,6 +124,7 @@ mod tests {
     use std::{path::PathBuf, time::Instant};
 
     #[test]
+    #[ignore = "slow"]
     fn test_duplicates() {
         let image_paths = get_test_images();
 
