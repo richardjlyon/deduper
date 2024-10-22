@@ -10,6 +10,7 @@
 use crate::image::Image;
 use crate::similarity::ssim_index2;
 use image::DynamicImage;
+use indicatif::ProgressStyle;
 use log::debug;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -19,6 +20,15 @@ use twox_hash::XxHash64;
 
 pub fn create_similarity_index_rayon(image_paths: Vec<PathBuf>) -> HashMap<String, Vec<String>> {
     debug!("Processing {} images", image_paths.len());
+
+    let n = image_paths.len();
+    let max_iterations = (n * (n - 1)) / 2; // Calculate the maximum number of comparisons
+    let pb = indicatif::ProgressBar::new(max_iterations as u64);
+    pb.set_style(
+        ProgressStyle::with_template("[{eta_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+            .unwrap()
+            .progress_chars("##-"),
+    );
 
     let similarity_index = image_paths
         .par_iter()
@@ -63,6 +73,8 @@ pub fn create_similarity_index_rayon(image_paths: Vec<PathBuf>) -> HashMap<Strin
                             similarity_index
                         );
                     }
+
+                    pb.inc(1);
                 }
 
                 (similarity_index, comparison_cache, image_cache)
@@ -80,6 +92,8 @@ pub fn create_similarity_index_rayon(image_paths: Vec<PathBuf>) -> HashMap<Strin
             },
         )
         .0;
+
+    pb.finish_with_message("Duplicate search complete");
 
     // Discard entries with no duplicates
     remove_subset_entries(similarity_index)
