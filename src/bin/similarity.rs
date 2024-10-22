@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use deduper::image::Image;
+use deduper::image::{ssim_score, Image};
 use deduper::setup_logger;
 use log::LevelFilter;
 
@@ -16,12 +16,13 @@ fn main() {
     let path1 = PathBuf::from("test-data/02/face-right-1.jpg");
     let path2 = PathBuf::from("test-data/02/face-right-2.jpg");
 
+    println!("Computing similarity...");
+    println!("- {:?}\n- {:?}", path1, path2);
+
     let img1 = Image::from_path(&path1).unwrap();
     let img2 = Image::from_path(&path2).unwrap();
 
-    println!("Image 1 orientation: {:?}", img1.orientation());
-    println!("Image 2 orientation: {:?}", img2.orientation());
+    let ssim_score = ssim_score(&img1, &img2).unwrap();
 
-    img1.image().unwrap().save("image1.jpg").unwrap();
-    img2.image().unwrap().save("image2.jpg").unwrap();
+    println!("score = {:?}", ssim_score);
 }

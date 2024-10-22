@@ -7,10 +7,12 @@ use crate::image::Image;
 
 pub fn index_images_in_folder(folder: PathBuf) -> Vec<PathBuf> {
     let mut image_files = Vec::new();
+    let valid_extensions = Image::valid_extensions();
 
     for entry in WalkDir::new(folder).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
-        if path.is_file() && Image::is_image_file(path) {
+        let extension = path.extension().unwrap_or_default().to_str().unwrap();
+        if path.is_file() && valid_extensions.contains(&extension) {
             image_files.push(path.to_path_buf());
         }
     }

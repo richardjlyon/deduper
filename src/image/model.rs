@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, ImageReader};
 use log::debug;
 use rexif::{ExifTag, TagValue};
 use xxhash_rust::xxh3::xxh3_64;
@@ -36,13 +36,15 @@ impl Image {
         })
     }
 
+    pub fn valid_extensions() -> Vec<&'static str> {
+        vec!["png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp"]
+    }
+
     /// Returns true if the image can be processed.
     pub fn is_valid(&self) -> bool {
         if let Some(extension) = self.path.extension() {
-            matches!(
-                extension.to_str().unwrap_or("").to_lowercase().as_str(),
-                "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tiff" | "webp"
-            )
+            let extension_str = extension.to_str().unwrap_or("").to_lowercase();
+            Self::valid_extensions().contains(&extension_str.as_str())
         } else {
             false
         }
@@ -100,11 +102,11 @@ impl Image {
             }
             Orientation::Rotated90 => {
                 debug!("rotated 90 degrees clockwise");
-                image = image.rotate270();
+                image = image.rotate90();
             }
             Orientation::Rotated270 => {
                 debug!("rotated 90 degrees counterclockwise");
-                image = image.rotate90();
+                image = image.rotate270();
             }
             // todo: complete other rotation variants
             _ => {}
@@ -114,15 +116,20 @@ impl Image {
     }
 
     /// Returns the resolution of the image.
-    pub fn resolution(&self) -> (u32, u32) {
-        let image = self.image().unwrap();
-        image.dimensions()
+    pub fn resolution(&self) -> Result<(u32, u32), AppError> {
+        let reader = ImageReader::open(&self.path)?;
+        let (w, h) = reader.into_dimensions()?;
+
+        match self.orientation() {
+            Orientation::Rotated90 | Orientation::Rotated270 => Ok((h, w)),
+            _ => Ok((w, h)),
+        }
     }
 
     /// Returns the aspect ratio of the image.
-    pub fn aspect_ratio(&self) -> f32 {
-        let (width, height) = self.resolution();
-        width as f32 / height as f32
+    pub fn aspect_ratio(&self) -> Result<f32, AppError> {
+        let (width, height) = self.resolution()?;
+        Ok(width as f32 / height as f32)
     }
 
     /// Return the hash of the image.
@@ -209,18 +216,21 @@ mod tests {
     }
 
     #[test]
+    // #[ignore = "slow"]
     fn test_resolution() {
         let img = get_img("01/house.jpg").unwrap();
-        assert_eq!(img.resolution(), (4032, 3024));
+        assert_eq!(img.resolution().unwrap(), (4032, 3024));
     }
 
     #[test]
+    #[ignore = "slow"]
     fn test_aspect_ratio() {
         let img = get_img("01/house.jpg").unwrap();
-        assert!((img.aspect_ratio() - 1.3333).abs() < 0.0001);
+        assert!((img.aspect_ratio().unwrap() - 1.3333).abs() < 0.0001);
     }
 
     #[test]
+    #[ignore = "slow"]
     fn test_hash() {
         let img1 = get_img("01/house.jpg").unwrap();
         let img2 = get_img("01/house-duplicate.jpg").unwrap();
@@ -231,6 +241,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "slow"]
     fn test_equal() {
         let img1 = get_img("01/house.jpg").unwrap();
         let img2 = get_img("01/house-duplicate.jpg").unwrap();

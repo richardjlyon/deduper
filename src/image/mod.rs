@@ -1,5 +1,5 @@
 mod model;
-// mod ssim;
+mod ssim;
 
 pub use model::Image;
-// pub use ssim::ssim_score;
+pub use ssim::ssim_score;

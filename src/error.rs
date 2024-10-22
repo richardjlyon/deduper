@@ -25,6 +25,7 @@ pub enum AppError {
 
     #[error("Invalid hash chunk size {0}: Should be between 0.0 and 1.0")]
     InvalidHashChunkSize(f32),
-    // #[error("Unknown error")]
-    // Unknown,
+
+    #[error("Unknown error")]
+    Unknown,
 }
