@@ -3,8 +3,8 @@
 use image::imageops::FilterType;
 use image::DynamicImage;
 
-use super::Image;
 use crate::error::AppError;
+use crate::image::Image;
 
 const ASPECT_RATIO_TOLERANCE: f32 = 0.01;
 

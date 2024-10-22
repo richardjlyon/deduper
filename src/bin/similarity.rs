@@ -1,8 +1,9 @@
 use std::env;
 use std::path::PathBuf;
 
-use deduper::image::{ssim_score, Image};
+use deduper::image::Image;
 use deduper::setup_logger;
+use deduper::similarity::ssim_score;
 use log::LevelFilter;
 
 fn main() {

@@ -1,6 +1,7 @@
 mod error;
 pub mod image;
 pub mod indexer;
+pub mod similarity;
 
 use log::LevelFilter;
 
