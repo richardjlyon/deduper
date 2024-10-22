@@ -98,12 +98,6 @@ mod tests {
     use image::GenericImageView;
 
     #[test]
-    fn test_aspect_ratio() {
-        let img = get_img("img.jpg").unwrap();
-        assert!((img.aspect_ratio() - 1.333).abs() < 0.01);
-    }
-
-    #[test]
     fn test_is_image_file() {
         let image_extensions = vec!["png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp"];
         let non_image_extensions = vec!["txt", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
@@ -123,25 +117,32 @@ mod tests {
 
     #[test]
     #[ignore = "slow"]
-    fn test_has_sidecar() {
-        let img_with = get_img("img.jpg").unwrap();
-        let img_without = get_img("img-duplicate.jpg").unwrap();
-
-        assert!(img_with._has_sidecar());
-        assert!(!img_without._has_sidecar());
-    }
-
-    #[test]
-    #[ignore = "slow"]
     fn test_constructor() {
-        let img_path = PathBuf::from("test-data/case-1/img.jpg");
+        let img_path = PathBuf::from("test-data/01/house.jpg");
         let img = Image::from_path(&img_path).unwrap();
 
         assert_eq!(img.image.dimensions(), (4032, 3024));
     }
 
+    #[test]
+    #[ignore = "slow"]
+    fn test_aspect_ratio() {
+        let img = get_img("01/house.jpg").unwrap();
+        assert!((img.aspect_ratio() - 1.333).abs() < 0.01);
+    }
+
+    #[test]
+    #[ignore = "slow"]
+    fn test_has_sidecar() {
+        let img_with = get_img("01/house.jpg").unwrap();
+        let img_without = get_img("01/coffee.jpeg").unwrap();
+
+        assert!(img_with._has_sidecar());
+        assert!(!img_without._has_sidecar());
+    }
+
     fn get_img(img_name: &str) -> Result<Image, AppError> {
-        let test_dir = PathBuf::from("test-data/case-1/");
+        let test_dir = PathBuf::from("test-data");
         let img_path = test_dir.join(img_name);
 
         Image::from_path(&img_path)

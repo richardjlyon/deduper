@@ -35,6 +35,7 @@ pub fn ssim_score(img1: &PathBuf, img2: &PathBuf) -> Result<f64, AppError> {
     Ok(ssim_score)
 }
 
+// Ensure that the images have the same dimensions
 fn normalize_images(img1: &DynamicImage, img2: &DynamicImage) -> (DynamicImage, DynamicImage) {
     let target_width = img1.width().min(img2.width());
     let target_height = img1.height().min(img2.height());
@@ -90,41 +91,41 @@ mod tests {
     use std::env;
 
     #[test]
-    // #[ignore = "slow"]
+    #[ignore = "slow"]
     fn test_ssim_similar() {
         // These images have the same dimensions and resolution
-        let img1 = get_test_img_path("2009-02-25-LX3-10.jpg").unwrap();
-        let img2 = get_test_img_path("090225-161708.jpg").unwrap();
+        let img1 = get_test_img_path("01/house.jpg").unwrap();
+        let img2 = get_test_img_path("01/house-duplicate.jpg").unwrap();
 
         assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
     }
 
     #[test]
-    // #[ignore = "slow"]
+    #[ignore = "slow"]
     fn test_ssim_similar_2() {
         // The second image is rotated
-        let img1 = get_test_img_path("2009-02-25-LX3-10.jpg").unwrap();
-        let img2 = get_test_img_path("2009-02-25-LX3-11.jpg").unwrap();
+        let img1 = get_test_img_path("02/face-right-1.jpg").unwrap();
+        let img2 = get_test_img_path("02/face-right-2.jpg").unwrap();
 
         assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
     }
 
     #[test]
-    // #[ignore = "slow"]
+    #[ignore = "slow"]
     fn test_ssim_dissimilar() {
         // These images are dissimilar
-        let img1 = get_test_img_path("2009-02-25-LX3-10.jpg").unwrap();
-        let img2 = get_test_img_path("2009-02-25-LX3-13.jpg").unwrap();
+        let img1 = get_test_img_path("01/house.jpg").unwrap();
+        let img2 = get_test_img_path("01/house-flipped.jpg").unwrap();
 
         assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() > 0.4);
     }
 
     #[test]
-    // #[ignore = "slow"]
+    #[ignore = "slow"]
     fn test_ssim_different_aspect_ratio_error() {
         // These images have different aspect ratios
-        let img1 = get_test_img_path("2009-02-25-LX3-10.jpg").unwrap();
-        let img2 = get_test_img_path("img-different.jpeg").unwrap();
+        let img1 = get_test_img_path("01/house.jpg").unwrap();
+        let img2 = get_test_img_path("01/coffee.jpeg").unwrap();
 
         let result = ssim_score(&img1, &img2);
 
@@ -133,7 +134,7 @@ mod tests {
 
     fn get_test_img_path(path: &str) -> Result<PathBuf, AppError> {
         let project_root = std::path::PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-        let image_path = project_root.join(format!("test-data/case-2/{}", path));
+        let image_path = project_root.join(format!("test-data/{}", path));
 
         Ok(image_path)
     }

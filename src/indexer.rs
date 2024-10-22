@@ -24,10 +24,9 @@ mod tests {
 
     #[test]
     fn test_index_images_in_folder() {
-        let test_dir = PathBuf::from("test-data/case-1");
+        let test_dir = PathBuf::from("test-data");
         let image_files = index_images_in_folder(test_dir);
 
-        assert_eq!(image_files.len(), 4);
-        println!("{:#?}", image_files);
+        assert_eq!(image_files.len(), 10);
     }
 }
