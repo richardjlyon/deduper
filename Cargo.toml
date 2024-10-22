@@ -3,9 +3,17 @@ name = "deduper"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "deduper"
+path = "src/lib.rs"
+
 [dependencies]
+chrono = "0.4.38"
+env_logger = "0.11.5"
+fern = "0.7.0"
 image = "0.25.4"
 indicatif = "0.17.8"
+log = "0.4.22"
 rayon = "1.10.0"
 rexif = "0.7.4"
 serde = { version = "1.0.210", features = ["derive"] }
