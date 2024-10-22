@@ -87,7 +87,7 @@ mod tests {
     use std::env;
 
     #[test]
-    #[ignore = "slow"]
+    // #[ignore = "slow"]
     fn test_ssim_similar() {
         // These images have the same dimensions and resolution
         let img1 = get_test_img("01/house.jpg").unwrap();
@@ -97,17 +97,27 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "slow"]
-    fn test_ssim_similar_2() {
+    // #[ignore = "slow"]
+    fn test_ssim_similar_rotated() {
         // The second image is rotated
         let img1 = get_test_img("02/face-right-1.jpg").unwrap();
-        let img2 = get_test_img("02/face-right-3.jpg").unwrap();
+        let img2 = get_test_img("02/face-right-2.jpg").unwrap();
 
         assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
     }
 
     #[test]
-    #[ignore = "slow"]
+    // #[ignore = "slow"]
+    fn test_ssim_similar_smaller() {
+        // The second image is smaller
+        let img1 = get_test_img("02/face-right-1.jpg").unwrap();
+        let img2 = get_test_img("02/face-right-1-small.jpg").unwrap();
+
+        assert!((ssim_score(&img1, &img2).unwrap() - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    // #[ignore = "slow"]
     fn test_ssim_dissimilar() {
         // These images are dissimilar
         let img1 = get_test_img("01/house.jpg").unwrap();

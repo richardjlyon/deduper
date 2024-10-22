@@ -14,7 +14,7 @@ fn main() {
     setup_logger(log_level).expect("Failed to initialize logger");
 
     let path1 = PathBuf::from("test-data/02/face-right-1.jpg");
-    let path2 = PathBuf::from("test-data/02/face-right-2.jpg");
+    let path2 = PathBuf::from("test-data/02/face-right-1-small.jpg");
 
     println!("Computing similarity...");
     println!("- {:?}\n- {:?}", path1, path2);
