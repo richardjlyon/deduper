@@ -39,9 +39,13 @@ fn main() {
 }
 
 fn handle_duplicates(reset: bool) {
+    dotenv::dotenv().ok();
+    let vault_root =
+        std::env::var("MYLIO_VAULT_ROOT").unwrap_or_else(|_| MYLIO_VAULT_ROOT.to_string());
+
     let root: String = Input::new()
         .with_prompt(format!("{}", "Vault root?".green()))
-        .default(MYLIO_VAULT_ROOT.to_string())
+        .default(vault_root.to_string())
         .interact_text()
         .unwrap();
 
