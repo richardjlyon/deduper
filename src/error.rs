@@ -29,6 +29,6 @@ pub enum AppError {
     #[error("Exif error: {0}")]
     ExifError(#[from] exif::Error),
 
-    #[error("Unknown error")]
-    Unknown,
+    #[error("Deserialise error")]
+    DeserialiseError(serde_json::Error),
 }

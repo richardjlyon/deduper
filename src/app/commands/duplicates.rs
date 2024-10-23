@@ -1,27 +1,22 @@
 //! Compute the image hashes, store to fjall keystore and save duplicates to a JSON file.
 
-use deduper::{error::AppError, indexer::index_images_in_folder, setup_logger};
-use fjall::{Config, PartitionCreateOptions, PartitionHandle};
+use super::remove::get_duplicates;
+use crate::models::serialize_to_json_file;
+use deduper::{
+    error::AppError, get_kv_partition, indexer::index_images_in_folder, setup_logger,
+    DUPLICATES_FILE, HASH_PARTITION,
+};
+use fjall::PartitionHandle;
 use indicatif::ProgressStyle;
 use log::{error, LevelFilter};
 use rayon::prelude::*;
-use serde::Serialize;
-use serde_json::to_writer_pretty;
 use std::{
-    collections::HashMap,
     env,
-    fs::File,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 const _TEST_DATA_ROOT: &str = "/Users/richardlyon/dev/deduper/test-data";
-const RESULT_FILE: &str = "results/duplicates.json";
-
-#[derive(Serialize, Default)]
-struct HashMapWrapper {
-    duplicates: HashMap<u64, Vec<String>>,
-}
 
 pub fn duplicates_command(root: &str, do_reset: bool) -> Result<i32, AppError> {
     // initialise logging
@@ -33,16 +28,15 @@ pub fn duplicates_command(root: &str, do_reset: bool) -> Result<i32, AppError> {
 
     // compute the hashes for the images
     let image_paths = index_images_in_folder(&PathBuf::from(root));
-    let keyspace = Config::new("./fjall").open()?;
-    let image_hashes =
-        keyspace.open_partition("image_hashes", PartitionCreateOptions::default())?;
+
+    let image_hash_partition = get_kv_partition(HASH_PARTITION)?;
 
     // insert the hashes in the kv store (set to true to rebuild the partition)
-    let fail_count = insert_hashes(&image_paths, &image_hashes, do_reset)?;
+    let fail_count = insert_hashes(&image_paths, &image_hash_partition, do_reset)?;
 
     // compute duplicates and save to a JSON file
-    let duplicates = get_duplicates(&image_hashes)?;
-    match serialize_to_json_file(duplicates, &PathBuf::from(RESULT_FILE)) {
+    let duplicates = get_duplicates(&image_hash_partition)?;
+    match serialize_to_json_file(duplicates, &PathBuf::from(DUPLICATES_FILE)) {
         Ok(_) => Ok(fail_count),
         Err(e) => Err(e),
     }
@@ -119,27 +113,6 @@ fn insert_hashes(
 }
 
 /// Find duplicate hashes in keystore values
-fn get_duplicates(partition: &PartitionHandle) -> Result<HashMap<u64, Vec<String>>, AppError> {
-    let kv = partition
-        .iter()
-        .filter_map(|kv| {
-            kv.ok().and_then(|(key, value)| {
-                let key = String::from_utf8(key.to_vec()).ok()?;
-                let value: u64 = bincode::deserialize(&value).ok()?;
-                Some((key, value))
-            })
-        })
-        .collect::<Vec<_>>();
-
-    let mut map: HashMap<u64, Vec<String>> = HashMap::new();
-
-    for (string, number) in kv {
-        map.entry(number).or_default().push(string);
-    }
-    map.retain(|_, v| v.len() > 1);
-
-    Ok(map)
-}
 
 /// Delete all keys
 fn clear_partition(partition: &PartitionHandle) -> Result<(), AppError> {
@@ -147,23 +120,6 @@ fn clear_partition(partition: &PartitionHandle) -> Result<(), AppError> {
         let (key, _) = kv?;
         partition.remove(&key)?;
     }
-
-    Ok(())
-}
-
-fn serialize_to_json_file(
-    data: HashMap<u64, Vec<String>>,
-    output_path: &PathBuf,
-) -> Result<(), AppError> {
-    // Wrap the data in a struct to make it serializable
-
-    let wrapper = HashMapWrapper { duplicates: data };
-
-    // Create or open the output file
-    let file = File::create(output_path)?;
-
-    // Serialize the data to the file in pretty JSON format
-    to_writer_pretty(file, &wrapper)?;
 
     Ok(())
 }

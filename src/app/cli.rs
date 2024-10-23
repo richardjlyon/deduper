@@ -1,11 +1,12 @@
 //! Command line application
 
-mod duplicates;
+mod commands;
+mod models;
 
 use clap::{Parser, Subcommand};
 use colored::*;
+use commands::{duplicates_command, remove_command};
 use dialoguer::Input;
-use duplicates::duplicates_command;
 
 const MYLIO_VAULT_ROOT: &str = "/Volumes/SamsungT9/Mylio_22c15a/Mylio Pictures";
 
@@ -25,9 +26,11 @@ struct Cli {
 enum Commands {
     /// Scan for duplicates
     Duplicates {
-        #[arg(short, long, help = "Resets the duplicates", default_value_t = false)]
+        #[arg(short, long, default_value_t = false)]
         reset: bool,
     },
+    /// Remove duplicates
+    Remove {},
 }
 
 fn main() {
@@ -35,6 +38,7 @@ fn main() {
 
     match &cli.command {
         Commands::Duplicates { reset } => handle_duplicates(*reset),
+        Commands::Remove {} => handle_remove(),
     }
 }
 
@@ -67,5 +71,12 @@ fn handle_duplicates(reset: bool) {
             }
         }
         Err(e) => eprintln!("Failed to save duplicates: {}", e),
+    }
+}
+
+fn handle_remove() {
+    match remove_command() {
+        Ok(_) => println!("Duplicates have been removed"),
+        Err(e) => eprintln!("Failed to remove duplicates: {}", e),
     }
 }
