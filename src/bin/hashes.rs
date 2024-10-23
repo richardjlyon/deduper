@@ -1,26 +1,35 @@
 //! Compute the image hashes and store to fjall keystore
 
-use deduper::{error::AppError, indexer::index_images_in_folder};
+use deduper::{error::AppError, indexer::index_images_in_folder, setup_logger};
 use fjall::{Config, PartitionCreateOptions, PartitionHandle};
 use indicatif::ProgressStyle;
+use log::{error, LevelFilter};
 use rayon::prelude::*;
 use std::{
     collections::HashMap,
+    env,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 const MYLIO_VAULT_ROOT: &str = "/Volumes/SamsungT9/Mylio_22c15a/Mylio Pictures";
-const TEST_DATA_ROOT: &str = "/Users/richardlyon/dev/deduper/test-data";
+const _TEST_DATA_ROOT: &str = "/Users/richardlyon/dev/deduper/test-data";
 
 fn main() -> Result<(), AppError> {
+    let log_level = env::var("RUST_LOG")
+        .unwrap_or_else(|_| "info".to_string())
+        .parse()
+        .unwrap_or(LevelFilter::Info);
+
+    setup_logger(log_level).expect("Failed to initialize logger");
+
     let keyspace = Config::new("./fjall").open()?;
     let image_hashes =
         keyspace.open_partition("image_hashes", PartitionCreateOptions::default())?;
 
     let image_paths = index_images_in_folder(&PathBuf::from(MYLIO_VAULT_ROOT));
 
-    let _ = insert_hashes(&image_paths, &image_hashes, false)?;
+    insert_hashes(&image_paths, &image_hashes, false)?;
 
     let duplicates = get_duplicates(&image_hashes)?;
 
@@ -68,7 +77,7 @@ fn insert_hashes(
         let hash = match image.hash() {
             Ok(hash) => hash,
             Err(_) => {
-                println!("Failed to get hash from {:?}", image_path);
+                error!("Failed to get hash from {:?}", image_path);
                 return;
             }
         };

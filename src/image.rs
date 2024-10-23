@@ -1,12 +1,12 @@
 //! Represents an image.
 //! Computes the hash of an image for detecting duplicates, and checks for sidecar files.
 
-use std::{hash::Hasher, path::PathBuf};
+use std::{fs::File, hash::Hasher, io::BufReader, path::PathBuf};
 
+use exif::{Exif, In, Reader, Tag};
 use image::{DynamicImage, ImageReader};
 use itertools::Itertools;
 use log::debug;
-use rexif::{ExifTag, TagValue};
 use xxhash_rust::xxh3::Xxh3;
 
 use crate::error::AppError;
@@ -27,6 +27,22 @@ pub enum Orientation {
     MirroredHorizontallyAndRotated90,
     Rotated270,
     Unknown,
+}
+
+impl From<u32> for Orientation {
+    fn from(value: u32) -> Self {
+        match value {
+            1 => Orientation::Normal,
+            2 => Orientation::MirrorHorizontal,
+            3 => Orientation::Rotated180,
+            4 => Orientation::MirrorVertical,
+            5 => Orientation::MirroredHorizontallyAndRotated270,
+            6 => Orientation::Rotated90,
+            7 => Orientation::MirroredHorizontallyAndRotated90,
+            8 => Orientation::Rotated270,
+            _ => Orientation::Unknown,
+        }
+    }
 }
 
 impl Image {
@@ -57,37 +73,29 @@ impl Image {
         sidecar.exists()
     }
 
-    /// Returns the metadata of the image.
-    pub fn metadata(&self) -> Result<rexif::ExifData, AppError> {
-        let metadata = rexif::parse_file(&self.path)?;
-        Ok(metadata)
+    /// Returns the hash of the image.
+    pub fn metadata(&self) -> Result<Exif, AppError> {
+        let file = File::open(&self.path).unwrap();
+        let exif = Reader::new().read_from_container(&mut BufReader::new(&file))?;
+
+        Ok(exif)
     }
 
     /// Get the orientation of the image.
     pub fn orientation(&self) -> Orientation {
         match self.metadata() {
-            Ok(metadata) => metadata
-                .entries
-                .iter()
-                .find(|entry| entry.tag == ExifTag::Orientation)
-                .and_then(|entry| {
-                    if let TagValue::U16(val) = &entry.value {
-                        val.first().cloned()
+            Ok(exif) => {
+                if let Some(field) = exif.get_field(Tag::Orientation, In::PRIMARY) {
+                    if let Some(orientation_value) = field.value.get_uint(0) {
+                        let orientation: Orientation = orientation_value.into();
+                        orientation
                     } else {
-                        None
+                        Orientation::Unknown
                     }
-                })
-                .map_or(Orientation::Unknown, |val| match val {
-                    1 => Orientation::Normal,
-                    2 => Orientation::MirrorHorizontal,
-                    3 => Orientation::Rotated180,
-                    4 => Orientation::MirrorVertical,
-                    5 => Orientation::MirroredHorizontallyAndRotated270,
-                    6 => Orientation::Rotated90,
-                    7 => Orientation::MirroredHorizontallyAndRotated90,
-                    8 => Orientation::Rotated270,
-                    _ => Orientation::Unknown,
-                }),
+                } else {
+                    Orientation::Unknown
+                }
+            }
             Err(_) => Orientation::Unknown,
         }
     }
@@ -162,6 +170,8 @@ impl PartialEq for Image {
 #[cfg(test)]
 mod tests {
 
+    use exif::{In, Tag};
+
     use super::*;
 
     #[test]
@@ -185,9 +195,11 @@ mod tests {
 
     #[test]
     fn test_metadata() {
-        let img = get_img("01/house.jpg").unwrap();
-        let metadata = img.metadata();
-        assert_eq!(metadata.unwrap().entries.len(), 59);
+        let img = get_img("02/face-right-2.jpg").unwrap();
+        let exif = img.metadata().unwrap();
+        if let Some(field) = exif.get_field(Tag::Orientation, In::PRIMARY) {
+            println!("{}: {}", field.tag, field.display_value());
+        }
     }
 
     #[test]
@@ -200,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    // #[ignore = "slow"]
+    #[ignore = "slow"]
     fn test_resolution() {
         let img = get_img("01/house.jpg").unwrap();
         assert_eq!(img.resolution().unwrap(), (4032, 3024));

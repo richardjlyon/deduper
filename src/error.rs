@@ -17,9 +17,6 @@ pub enum AppError {
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
-    #[error("Exif error: {0}")]
-    ExifError(#[from] rexif::ExifError),
-
     #[error("Serialise error: {0}")]
     SerialiseError(#[from] serde_json::Error),
 
@@ -28,6 +25,9 @@ pub enum AppError {
 
     #[error("Fjall error: {0}")]
     FjallError(#[from] fjall::Error),
+
+    #[error("Exif error: {0}")]
+    ExifError(#[from] exif::Error),
 
     #[error("Unknown error")]
     Unknown,
