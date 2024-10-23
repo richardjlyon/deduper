@@ -18,6 +18,12 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use twox_hash::XxHash64;
 
+/// Algorithm:
+/// 1. filter out byte-for-byte identical images
+///   - hash all the images
+///   - sort the hashes
+///   - bucket consecutive runs into groups
+/// 2. figure out some content aware hash
 pub fn create_similarity_index_rayon(image_paths: Vec<PathBuf>) -> HashMap<String, Vec<String>> {
     debug!("Processing {} images", image_paths.len());
 

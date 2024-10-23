@@ -7,14 +7,22 @@ edition = "2021"
 name = "deduper"
 path = "src/lib.rs"
 
+[profile.release]
+lto = "thin"
+opt-level = 3
+codegen-units = 1
+
 [dependencies]
+arrayvec = "0.7.6"
 chrono = "0.4.38"
 env_logger = "0.11.5"
 fern = "0.7.0"
+fjall = "2.2.0"
 futures = "0.3.31"
 humantime = "2.1.0"
 image = "0.25.4"
 indicatif = "0.17.8"
+itertools = "0.13.0"
 log = "0.4.22"
 rayon = "1.10.0"
 rexif = "0.7.4"

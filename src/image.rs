@@ -1,12 +1,13 @@
 //! Represents an image.
 //! Computes the hash of an image for detecting duplicates, and checks for sidecar files.
 
-use std::path::PathBuf;
+use std::{hash::Hasher, path::PathBuf, time::Instant};
 
 use image::{DynamicImage, ImageReader};
+use itertools::Itertools;
 use log::debug;
 use rexif::{ExifTag, TagValue};
-use xxhash_rust::xxh3::xxh3_64;
+use xxhash_rust::xxh3::{xxh3_64, Xxh3};
 
 use crate::error::AppError;
 
@@ -140,25 +141,13 @@ impl Image {
 
         // Convert the image to RGB8 format
         let rgb_image = self.image()?.to_rgb8();
-        let (width, height) = rgb_image.dimensions();
 
-        // Define the chunk size (e.g., 10% of the image)
-        let chunk_width = ((width as f32) * chunksize) as u32;
-        let chunk_height = ((height as f32) * chunksize) as u32;
-
-        // Collect the pixel data from the chunk
-        let mut chunk_data = Vec::with_capacity((chunk_width * chunk_height * 3) as usize);
-        for y in 0..chunk_height {
-            for x in 0..chunk_width {
-                let pixel = rgb_image.get_pixel(x, y);
-                chunk_data.extend_from_slice(&pixel.0);
-            }
+        let mut hasher = Xxh3::new();
+        for chunk in &rgb_image.pixels().flat_map(|rgb| rgb.0).chunks(131072) {
+            let data: arrayvec::ArrayVec<u8, 131072> = chunk.collect();
+            hasher.update(&data);
         }
-
-        // Create a hash of the chunk data using xxHash
-        let hash = xxh3_64(&chunk_data);
-
-        Ok(hash)
+        Ok(hasher.finish())
     }
 }
 
