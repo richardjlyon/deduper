@@ -5,7 +5,7 @@ use walkdir::WalkDir;
 
 use crate::image::Image;
 
-pub fn index_images_in_folder(folder: PathBuf) -> Vec<PathBuf> {
+pub fn index_images_in_folder(folder: &PathBuf) -> Vec<PathBuf> {
     let mut image_files = Vec::new();
     let valid_extensions = Image::valid_extensions();
 
@@ -27,7 +27,7 @@ mod tests {
     #[test]
     fn test_index_images_in_folder() {
         let test_dir = PathBuf::from("test-data");
-        let image_files = index_images_in_folder(test_dir);
+        let image_files = index_images_in_folder(&test_dir);
 
         assert_eq!(image_files.len(), 12);
     }
