@@ -42,3 +42,18 @@ Additional considerations:
 Where duplictes are found, the app should keep the image with the highest resolution.
 
 Metadata from the other images should be preserved, expecially geolocation. The app needs to manage conflicts.
+
+
+
+Aproach 2:
+==========
+
+Brute force image structural similarity comparison is slow and memory intensive. We can use a more efficient approach by using a perceptual hash to compare images. We can use the hamming distance between the hashes to determine similarity. We can then use a clustering algorithm to group similar images together.
+
+Also, the problem space can be reduced by identifying and removing images with an identical image hash. This will reduce the number of images that need to be compared with the structural similarity algorithm.
+
+Method:
+
+1. Compute the hash of each image
+2. Compute groups of identical hashes
+3. Generate a report of the duplicates

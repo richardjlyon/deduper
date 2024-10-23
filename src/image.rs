@@ -1,13 +1,13 @@
 //! Represents an image.
 //! Computes the hash of an image for detecting duplicates, and checks for sidecar files.
 
-use std::{hash::Hasher, path::PathBuf, time::Instant};
+use std::{hash::Hasher, path::PathBuf};
 
 use image::{DynamicImage, ImageReader};
 use itertools::Itertools;
 use log::debug;
 use rexif::{ExifTag, TagValue};
-use xxhash_rust::xxh3::{xxh3_64, Xxh3};
+use xxhash_rust::xxh3::Xxh3;
 
 use crate::error::AppError;
 
@@ -134,11 +134,7 @@ impl Image {
     }
 
     /// Return the hash of the image.
-    pub fn hash(&self, chunksize: f32) -> Result<u64, AppError> {
-        if chunksize <= 0.0 || chunksize > 1.0 {
-            return Err(AppError::InvalidHashChunkSize(chunksize));
-        }
-
+    pub fn hash(&self) -> Result<u64, AppError> {
         // Convert the image to RGB8 format
         let rgb_image = self.image()?.to_rgb8();
 
@@ -154,8 +150,7 @@ impl Image {
 impl PartialEq for Image {
     /// Returns true if the image hahes are equal.
     fn eq(&self, other: &Self) -> bool {
-        const CHUNKSIZE: f32 = 0.1;
-        match (self.hash(CHUNKSIZE), other.hash(CHUNKSIZE)) {
+        match (self.hash(), other.hash()) {
             (Ok(self_hash), Ok(other_hash)) => self_hash == other_hash,
             _ => false,
         }
@@ -225,8 +220,8 @@ mod tests {
         let img2 = get_img("01/house-duplicate.jpg").unwrap();
         let img3 = get_img("01/coffee.jpeg").unwrap();
 
-        assert_eq!(img1.hash(0.1).unwrap(), img2.hash(0.1).unwrap());
-        assert_ne!(img1.hash(0.1).unwrap(), img3.hash(0.1).unwrap())
+        assert_eq!(img1.hash().unwrap(), img2.hash().unwrap());
+        assert_ne!(img1.hash().unwrap(), img3.hash().unwrap())
     }
 
     #[test]

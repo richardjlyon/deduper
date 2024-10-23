@@ -4,8 +4,9 @@ pub mod error;
 pub mod image;
 pub mod indexer;
 pub mod similarity;
+use itertools::Itertools;
 
-use std::{collections::HashMap, path::Path, time::SystemTime};
+use std::{path::Path, time::SystemTime};
 
 use log::LevelFilter;
 
@@ -28,8 +29,6 @@ pub fn setup_logger(level: LevelFilter) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-use itertools::Itertools;
-
 pub fn process_images(root: &Path) {
     // hashes of the byte data
     let byte_hashes = get_byte_hashes(root);
@@ -46,7 +45,7 @@ pub fn process_images(root: &Path) {
     // sfs | g5
 
     let groups = byte_hashes.iter().sorted().chunk_by(|k| k.0);
-    let duplicates = groups.into_iter().filter_map(|(group_id, mut chunk)| {
+    let duplicates = groups.into_iter().filter_map(|(_group_id, mut chunk)| {
         let first = chunk.next().unwrap();
         let second = chunk.next()?;
         Some([first, second].into_iter().chain(chunk))
@@ -56,7 +55,7 @@ pub fn process_images(root: &Path) {
     println!("{:?}", duplicates);
 }
 
-fn get_byte_hashes(root: &Path) -> Vec<(u64, &str)> {
+fn get_byte_hashes(_root: &Path) -> Vec<(u64, &str)> {
     vec![
         (0, "a.png"),
         (1, "b.png"),
@@ -69,8 +68,4 @@ fn get_byte_hashes(root: &Path) -> Vec<(u64, &str)> {
         (0, "i.png"),
         (1, "j.png"),
     ]
-}
-
-fn get_perceptual_hashes(root: &Path) -> Vec<u64> {
-    todo!()
 }

@@ -26,6 +26,9 @@ pub enum AppError {
     #[error("Invalid hash chunk size {0}: Should be between 0.0 and 1.0")]
     InvalidHashChunkSize(f32),
 
+    #[error("Fjall error: {0}")]
+    FjallError(#[from] fjall::Error),
+
     #[error("Unknown error")]
     Unknown,
 }
