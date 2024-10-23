@@ -26,5 +26,5 @@ fn main() {
 
 fn get_test_images() -> Vec<PathBuf> {
     let test_dir = PathBuf::from("test-data/02");
-    index_images_in_folder(test_dir)
+    index_images_in_folder(&test_dir)
 }

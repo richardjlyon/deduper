@@ -355,6 +355,7 @@ dependencies = [
  "env_logger",
  "fern",
  "futures",
+ "humantime",
  "image",
  "indicatif",
  "log",

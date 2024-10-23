@@ -31,12 +31,12 @@ fn main() {
     let duration = start.elapsed();
     println!("->> Time elapsed is: {:?}", duration);
 
-    serialize_to_json_file(similarity_index, "result.json");
+    let _ = serialize_to_json_file(similarity_index, "result.json");
 }
 
 fn get_test_images() -> Vec<PathBuf> {
     let test_dir = PathBuf::from("test-data/02");
-    index_images_in_folder(test_dir)
+    index_images_in_folder(&test_dir)
 }
 
 fn serialize_to_json_file(

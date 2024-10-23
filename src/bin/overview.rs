@@ -15,7 +15,7 @@ fn main() {
     setup_logger(log_level).expect("Failed to initialize logger");
 
     let folder = PathBuf::from("test-data");
-    let paths = index_images_in_folder(folder);
+    let paths = index_images_in_folder(&folder);
 
     for path in &paths {
         let img = Image::from_path(path).unwrap();

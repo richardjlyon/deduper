@@ -37,6 +37,7 @@ pub fn create_similarity_index_rayon(image_paths: Vec<PathBuf>) -> HashMap<Strin
             || (HashMap::new(), HashMap::new(), HashMap::new()),
             |(mut similarity_index, mut comparison_cache, mut image_cache), (i, path1)| {
                 debug!("Processing image: {}", path1.display());
+                pb.set_message(path1.parent().unwrap().display().to_string());
 
                 // Skip if the image has already been added to the similarity index
                 if contains_value(&similarity_index, &path1.to_string_lossy()) {
@@ -67,11 +68,7 @@ pub fn create_similarity_index_rayon(image_paths: Vec<PathBuf>) -> HashMap<Strin
                             .entry(hash1.clone())
                             .or_default()
                             .push(path2.to_string_lossy().into_owned());
-
-                        debug!(
-                            "Found similar: similarity_index now {:#?}",
-                            similarity_index
-                        );
+                        debug!("Similarity: {}", similarity);
                     }
 
                     pb.inc(1);
@@ -96,7 +93,15 @@ pub fn create_similarity_index_rayon(image_paths: Vec<PathBuf>) -> HashMap<Strin
     pb.finish_with_message("Duplicate search complete");
 
     // Discard entries with no duplicates
-    remove_subset_entries(similarity_index)
+    let result = remove_subset_entries(similarity_index);
+
+    let mut total_count = 0;
+    for values in result.values() {
+        total_count += values.len();
+    }
+    pb.finish_with_message(format!("Found {} duplicates", total_count));
+
+    result
 }
 
 fn contains_value(map: &HashMap<String, Vec<String>>, value: &str) -> bool {
@@ -207,6 +212,6 @@ mod tests {
 
     fn get_test_images() -> Vec<PathBuf> {
         let test_dir = PathBuf::from("test-data");
-        index_images_in_folder(test_dir)
+        index_images_in_folder(&test_dir)
     }
 }

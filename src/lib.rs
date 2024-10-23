@@ -5,24 +5,24 @@ pub mod image;
 pub mod indexer;
 pub mod similarity;
 
+use std::time::SystemTime;
+
 use log::LevelFilter;
 
-pub fn setup_logger(level: LevelFilter) -> Result<(), Box<dyn std::error::Error>> {
-    let log_file = fern::log_file("output.log")?;
-
+pub fn setup_logger(level: LevelFilter) -> Result<(), fern::InitError> {
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                "[{} {} {}] {}",
+                humantime::format_rfc3339_seconds(SystemTime::now()),
                 record.level(),
                 record.target(),
                 message
             ))
         })
         .level(level)
-        .chain(std::io::stdout())
-        .chain(log_file)
+        // .chain(std::io::stdout())
+        .chain(fern::log_file("logs/output.log")?)
         .apply()?;
 
     Ok(())
