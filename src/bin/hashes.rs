@@ -1,40 +1,52 @@
-//! Compute the image hashes and store to fjall keystore
+//! Compute the image hashes, store to fjall keystore and save duplicates to a JSON file.
 
 use deduper::{error::AppError, indexer::index_images_in_folder, setup_logger};
 use fjall::{Config, PartitionCreateOptions, PartitionHandle};
 use indicatif::ProgressStyle;
 use log::{error, LevelFilter};
 use rayon::prelude::*;
+use serde::Serialize;
+use serde_json::to_writer_pretty;
 use std::{
     collections::HashMap,
     env,
+    fs::File,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 const MYLIO_VAULT_ROOT: &str = "/Volumes/SamsungT9/Mylio_22c15a/Mylio Pictures";
 const _TEST_DATA_ROOT: &str = "/Users/richardlyon/dev/deduper/test-data";
+const RESULT_FILE: &str = "results/duplicates.json";
+
+#[derive(Serialize, Default)]
+struct HashMapWrapper {
+    duplicates: HashMap<u64, Vec<String>>,
+}
 
 fn main() -> Result<(), AppError> {
+    // initialise logging
     let log_level = env::var("RUST_LOG")
         .unwrap_or_else(|_| "info".to_string())
         .parse()
         .unwrap_or(LevelFilter::Info);
-
     setup_logger(log_level).expect("Failed to initialize logger");
 
+    // compute the hashes for the images
+    let image_paths = index_images_in_folder(&PathBuf::from(MYLIO_VAULT_ROOT));
     let keyspace = Config::new("./fjall").open()?;
     let image_hashes =
         keyspace.open_partition("image_hashes", PartitionCreateOptions::default())?;
 
-    let image_paths = index_images_in_folder(&PathBuf::from(MYLIO_VAULT_ROOT));
-
+    // insert the hashes in the kv store (set to true to rebuild the partition)
     insert_hashes(&image_paths, &image_hashes, false)?;
 
+    // compute duplicates and save to a JSON file
     let duplicates = get_duplicates(&image_hashes)?;
-
-    println!("Duplicates:");
-    println!("{:#?}", duplicates);
+    match serialize_to_json_file(duplicates, &PathBuf::from(RESULT_FILE)) {
+        Ok(_) => println!("Duplicates have been saved to '{}'", RESULT_FILE),
+        Err(e) => eprintln!("Failed to save duplicates: {}", e),
+    }
 
     Ok(())
 }
@@ -103,7 +115,7 @@ fn insert_hashes(
     Ok(())
 }
 
-// Find duplicate hashes in keystore values
+/// Find duplicate hashes in keystore values
 fn get_duplicates(partition: &PartitionHandle) -> Result<HashMap<u64, Vec<String>>, AppError> {
     let kv = partition
         .iter()
@@ -126,12 +138,29 @@ fn get_duplicates(partition: &PartitionHandle) -> Result<HashMap<u64, Vec<String
     Ok(map)
 }
 
-// Delete all keys
+/// Delete all keys
 fn clear_partition(partition: &PartitionHandle) -> Result<(), AppError> {
     for kv in partition.iter() {
         let (key, _) = kv?;
         partition.remove(&key)?;
     }
+
+    Ok(())
+}
+
+fn serialize_to_json_file(
+    data: HashMap<u64, Vec<String>>,
+    output_path: &PathBuf,
+) -> Result<(), AppError> {
+    // Wrap the data in a struct to make it serializable
+
+    let wrapper = HashMapWrapper { duplicates: data };
+
+    // Create or open the output file
+    let file = File::create(output_path)?;
+
+    // Serialize the data to the file in pretty JSON format
+    to_writer_pretty(file, &wrapper)?;
 
     Ok(())
 }
