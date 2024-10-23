@@ -2,10 +2,15 @@
 name = "deduper"
 version = "0.1.0"
 edition = "2021"
+default-run = "deduper"
 
 [lib]
 name = "deduper"
 path = "src/lib.rs"
+
+[[bin]]
+name = "deduper"
+path = "src/app/cli.rs"
 
 [profile.release]
 lto = "thin"
@@ -16,6 +21,9 @@ codegen-units = 1
 arrayvec = "0.7.6"
 bincode = "1.3.3"
 chrono = "0.4.38"
+clap = { version = "4.5.20", features = ["derive"] }
+colored = "2.1.0"
+dialoguer = "0.11.0"
 env_logger = "0.11.5"
 fern = "0.7.0"
 fjall = "2.2.0"

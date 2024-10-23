@@ -15,7 +15,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-const MYLIO_VAULT_ROOT: &str = "/Volumes/SamsungT9/Mylio_22c15a/Mylio Pictures";
 const _TEST_DATA_ROOT: &str = "/Users/richardlyon/dev/deduper/test-data";
 const RESULT_FILE: &str = "results/duplicates.json";
 
@@ -24,7 +23,7 @@ struct HashMapWrapper {
     duplicates: HashMap<u64, Vec<String>>,
 }
 
-fn main() -> Result<(), AppError> {
+pub fn duplicates_command(root: &str, do_reset: bool) -> Result<i32, AppError> {
     // initialise logging
     let log_level = env::var("RUST_LOG")
         .unwrap_or_else(|_| "info".to_string())
@@ -33,22 +32,20 @@ fn main() -> Result<(), AppError> {
     setup_logger(log_level).expect("Failed to initialize logger");
 
     // compute the hashes for the images
-    let image_paths = index_images_in_folder(&PathBuf::from(MYLIO_VAULT_ROOT));
+    let image_paths = index_images_in_folder(&PathBuf::from(root));
     let keyspace = Config::new("./fjall").open()?;
     let image_hashes =
         keyspace.open_partition("image_hashes", PartitionCreateOptions::default())?;
 
     // insert the hashes in the kv store (set to true to rebuild the partition)
-    insert_hashes(&image_paths, &image_hashes, false)?;
+    let fail_count = insert_hashes(&image_paths, &image_hashes, do_reset)?;
 
     // compute duplicates and save to a JSON file
     let duplicates = get_duplicates(&image_hashes)?;
     match serialize_to_json_file(duplicates, &PathBuf::from(RESULT_FILE)) {
-        Ok(_) => println!("Duplicates have been saved to '{}'", RESULT_FILE),
-        Err(e) => eprintln!("Failed to save duplicates: {}", e),
+        Ok(_) => Ok(fail_count),
+        Err(e) => Err(e),
     }
-
-    Ok(())
 }
 
 /// Insert the hashes of the images into the fjall keystore
@@ -56,7 +53,7 @@ fn insert_hashes(
     image_paths: &[PathBuf],
     partition: &PartitionHandle,
     do_clear: bool,
-) -> Result<(), AppError> {
+) -> Result<i32, AppError> {
     if do_clear {
         clear_partition(partition)?;
     }
@@ -70,6 +67,7 @@ fn insert_hashes(
 
     let partition = Arc::new(Mutex::new(partition));
     let pb = Arc::new(Mutex::new(pb));
+    let fail_count = Arc::new(Mutex::new(0));
 
     image_paths.par_iter().for_each(|image_path| {
         let serialised_image_path = image_path.to_str().unwrap().as_bytes();
@@ -90,6 +88,8 @@ fn insert_hashes(
             Ok(hash) => hash,
             Err(_) => {
                 error!("Failed to get hash from {:?}", image_path);
+                let mut fail_count = fail_count.lock().unwrap();
+                *fail_count += 1;
                 return;
             }
         };
@@ -110,9 +110,12 @@ fn insert_hashes(
         }
     });
 
-    // pb.finish_with_message("Duplicate search complete");
+    let pb = pb.lock().unwrap();
+    pb.finish_with_message("Duplicate search complete");
 
-    Ok(())
+    let fail_count = *fail_count.lock().unwrap();
+
+    Ok(fail_count)
 }
 
 /// Find duplicate hashes in keystore values
